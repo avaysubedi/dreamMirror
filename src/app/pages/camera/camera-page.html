@@ -1,0 +1,142 @@
+<main class="camera-layout">
+  <header class="camera-header">
+    <div class="brand">
+      <span class="brand-tag">DreamMirror Mobile</span>
+      <h1 class="brand-title">You Are The Lens</h1>
+    </div>
+    <div class="telemetry-bar">
+      <span class="status-pill" [class.live]="webrtc.status() === 'connected'">
+        <span class="dot"></span>
+        {{ webrtc.status() === 'connected' ? 'Connected' : webrtc.status() }}
+      </span>
+      <span class="status-pill">
+        Connected Users: {{ webrtc.connectedUsers() }}
+      </span>
+      <span class="status-pill">
+        Signal: {{ webrtc.status() }}
+      </span>
+      @if (camera.resolution().width) {
+        <span class="status-pill spec">
+          {{ camera.resolution().width }}×{{ camera.resolution().height }}
+        </span>
+      }
+    </div>
+  </header>
+
+  @if (isHttpOnLan()) {
+    <div class="https-alert-card">
+      <div class="alert-icon">🔒</div>
+      <div class="alert-body">
+        <h4>HTTPS Required for Mobile Camera</h4>
+        <p>Mobile browsers block camera permissions over plain HTTP on local Wi-Fi. Tap below to switch to the secure HTTPS link:</p>
+        <button type="button" class="btn-switch-https" (click)="goToHttps()">
+          Switch to HTTPS ({{ httpsUrl() }})
+        </button>
+        <small class="alert-hint">Note: If your browser shows a "Not Private / Certificate" warning, tap <strong>Advanced</strong> and then <strong>Proceed to 192.168.1.79</strong> to grant camera access.</small>
+      </div>
+    </div>
+  }
+
+  <div class="viewport-frame">
+    <video
+      #preview
+      class="camera-preview"
+      [class.mirrored]="mirrorPreview()"
+      autoplay
+      playsinline
+      muted
+    ></video>
+
+    <!-- Overlay quick controls -->
+    <div class="viewport-overlay">
+      <div class="overlay-row">
+        <button
+          type="button"
+          class="icon-btn"
+          [class.active]="mirrorPreview()"
+          (click)="toggleMirror()"
+          title="Toggle mirror preview"
+          aria-label="Toggle mirror preview"
+        >
+          <span>⇄ Mirror</span>
+        </button>
+
+        @if (camera.torchSupported()) {
+          <button
+            type="button"
+            class="icon-btn"
+            [class.active]="camera.torchOn()"
+            (click)="toggleTorch()"
+            title="Toggle torch light"
+            aria-label="Toggle torch"
+          >
+            <span>⚡ Torch</span>
+          </button>
+        }
+
+        <button
+          type="button"
+          class="icon-btn"
+          (click)="toggleFullscreen()"
+          title="Toggle fullscreen"
+          aria-label="Toggle fullscreen"
+        >
+          <span>⛶ {{ isFullscreen() ? 'Exit' : 'Full' }}</span>
+        </button>
+      </div>
+
+      <div class="facing-badge">
+        {{ camera.facing() === 'user' ? 'Front Camera' : 'Rear Camera' }}
+      </div>
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="error-banner">
+      <span class="error-icon">⚠</span>
+      <p class="error-text">{{ error() }}</p>
+    </div>
+  }
+
+  <section class="controls-card">
+    @if (webrtc.status() === 'connected') {
+      <div class="connected-hero">
+        <div class="pulse-ring"></div>
+        <p class="live-label">LIVE STREAMING ACTIVE</p>
+        <p class="live-hint">Your video is blending into the visual journey on the Show screen.</p>
+      </div>
+    } @else {
+      <div class="pairing-box">
+        <label for="host-input" class="label">Host Room ID</label>
+        <div class="input-row">
+          <input
+            id="host-input"
+            type="text"
+            placeholder="e.g. host-xyz or scan QR"
+            [value]="manualHostInput()"
+            (input)="manualHostInput.set($any($event.target).value)"
+            class="host-input"
+          />
+          <button type="button" class="connect-btn" (click)="connectToHost()">
+            Connect
+          </button>
+        </div>
+      </div>
+    }
+
+    <div class="action-grid">
+      <button type="button" class="btn primary" (click)="switchCamera()">
+        <span class="btn-icon">🔄</span> Switch Camera
+      </button>
+      <button type="button" class="btn ghost" (click)="reconnect()">
+        <span class="btn-icon">⚡</span> Connect to Visualizer
+      </button>
+    </div>
+
+    <div class="footer-meta">
+      <span>Target Latency: &lt;500ms</span>
+      <span>•</span>
+      <span>WebRTC P2P</span>
+    </div>
+  </section>
+</main>

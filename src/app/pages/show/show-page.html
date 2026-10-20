@@ -1,0 +1,249 @@
+<div class="stage-wrap" (pointermove)="onPointerMove()">
+  <video #remoteVideo class="hidden-video" playsinline autoplay muted></video>
+  <canvas #stage class="stage"></canvas>
+
+  <div class="veil" [class.hidden]="uiHidden()"></div>
+
+  @if (!uiHidden()) {
+    <header class="topbar">
+      <div class="brand">
+        <p class="kicker">DreamMirror</p>
+        <h1>Become The Music</h1>
+      </div>
+
+      <!-- Real-time Audio VU Spectral Meter -->
+      <div class="audio-vu-panel">
+        <div class="vu-track" title="Bass">
+          <span class="vu-label">BASS</span>
+          <div class="vu-bar-bg">
+            <div class="vu-bar bass" [style.height.%]="vuBass() * 100"></div>
+          </div>
+        </div>
+        <div class="vu-track" title="Mid">
+          <span class="vu-label">MID</span>
+          <div class="vu-bar-bg">
+            <div class="vu-bar mid" [style.height.%]="vuMid() * 100"></div>
+          </div>
+        </div>
+        <div class="vu-track" title="Treble">
+          <span class="vu-label">HIGH</span>
+          <div class="vu-bar-bg">
+            <div class="vu-bar treble" [style.height.%]="vuTreble() * 100"></div>
+          </div>
+        </div>
+        <div class="vu-beat" [class.active]="vuBeat() > 0.4" title="Beat Peak">
+          BEAT
+        </div>
+      </div>
+
+      <div class="status">
+        <span class="pill" [class.live]="webrtc.status() === 'connected'">
+          <span class="dot"></span>
+          {{ webrtc.status() === 'connected' ? 'Connected' : 'Awaiting Camera' }}
+        </span>
+        <span class="pill">Users: {{ webrtc.connectedUsers() }}</span>
+        <span class="pill">Signal: {{ webrtc.status() }}</span>
+        <button type="button" class="pill-btn" (click)="toggleFullscreen()" title="Toggle Fullscreen (F)">
+          {{ fullscreen() ? 'Exit Full' : 'Fullscreen' }}
+        </button>
+      </div>
+    </header>
+
+    @if (journey.status() === 'idle') {
+      <section class="start-panel">
+        <!-- QR Code Pairing Card -->
+        <div class="qr-card">
+          <div class="qr-header">
+            <p class="card-kicker">Mobile Pairing</p>
+            <h3>Connect Wireless Camera</h3>
+          </div>
+
+          <div class="qr-frame">
+            @if (qrUrl()) {
+              <img [src]="qrUrl()" alt="Scan to join as camera source" />
+            } @else {
+              <div class="qr-loading">Generating pairing key...</div>
+            }
+          </div>
+
+          <p class="scan-instruction">Scan with phone camera to join</p>
+
+          <div class="link-row">
+            <a class="link-text" [href]="cameraLink()" target="_blank" rel="noreferrer">
+              {{ cameraLink() }}
+            </a>
+            <button type="button" class="copy-btn" (click)="copyLink()">
+              {{ copyStatus() || 'Copy' }}
+            </button>
+          </div>
+
+          <!-- Network IP configuration helper for local Wi-Fi phones -->
+          <div class="network-config-visible">
+            <div class="network-label">Phone Pairing Address:</div>
+            <div class="preset-buttons-row">
+              <button
+                type="button"
+                class="preset-chip"
+                [class.active]="hostAddress().includes('192.168.1.79') && hostAddress().startsWith('https')"
+                (click)="setHostPreset('lan-https')"
+                title="Recommended for phones (SSL enables camera)"
+              >
+                🔒 192.168.1.79 (HTTPS)
+              </button>
+              <button
+                type="button"
+                class="preset-chip"
+                [class.active]="hostAddress().includes('192.168.1.79') && hostAddress().startsWith('http:')"
+                (click)="setHostPreset('lan-http')"
+              >
+                192.168.1.79 (HTTP)
+              </button>
+              <button
+                type="button"
+                class="preset-chip"
+                [class.active]="hostAddress().includes('localhost')"
+                (click)="setHostPreset('local')"
+              >
+                Localhost
+              </button>
+            </div>
+            <div class="custom-ip-row">
+              <input
+                id="host-ip-input"
+                type="text"
+                [value]="hostAddress()"
+                (change)="updateHostAddress($any($event.target).value)"
+                class="host-address-input"
+                placeholder="https://192.168.1.79:4200"
+              />
+            </div>
+            <p class="phone-tip">
+              💡 <strong>Mobile tip:</strong> Mobile cameras require HTTPS. If Safari/Chrome shows "Not Private", tap <strong>Advanced</strong> → <strong>Proceed to 192.168.1.79</strong> to enable camera.
+            </p>
+          </div>
+        </div>
+
+        <!-- Operator Controls & Audio Setup Card -->
+        <div class="controls-card">
+          <div class="card-header">
+            <p class="card-kicker">Operator Deck</p>
+            <h3>Audiovisual Setup</h3>
+          </div>
+
+          <div class="audio-source-tabs">
+            <button
+              type="button"
+              class="tab-btn"
+              [class.active]="songMode() === 'demo'"
+              (click)="useDemoSong()"
+            >
+              🎹 Rave Synth Demo
+            </button>
+            <button
+              type="button"
+              class="tab-btn"
+              [class.active]="songMode() === 'mic'"
+              (click)="useMicrophone()"
+            >
+              🎙 Live Mic / Line-In
+            </button>
+            <label class="tab-btn file-tab" [class.active]="songMode() === 'file'">
+              📁 Audio File
+              <input type="file" accept="audio/*" (change)="onSongFile($event)" />
+            </label>
+          </div>
+
+          <div class="current-track-banner">
+            <span class="track-icon">🎵</span>
+            <span class="track-name">{{ songLabel() }}</span>
+          </div>
+
+          <div class="deck-actions">
+            <button type="button" class="primary-launch-btn" (click)="startJourney()">
+              <span class="btn-sparkle">✦</span> START JOURNEY <span class="btn-sparkle">✦</span>
+            </button>
+
+            <button type="button" class="ghost-btn" (click)="useLocalCamera()">
+              Use This Device Camera (Local Test)
+            </button>
+          </div>
+
+          <!-- Keyboard Shortcuts Cheat-sheet -->
+          <div class="shortcuts-legend">
+            <span class="legend-title">Keyboard Shortcuts:</span>
+            <span class="shortcut-tag"><kbd>Space</kbd> Play/Pause</span>
+            <span class="shortcut-tag"><kbd>F</kbd> Fullscreen</span>
+            <span class="shortcut-tag"><kbd>N</kbd> Next World</span>
+            <span class="shortcut-tag"><kbd>R</kbd> Random</span>
+            <span class="shortcut-tag"><kbd>H</kbd> Hide UI</span>
+            <span class="shortcut-tag"><kbd>1-9</kbd> Jump World</span>
+          </div>
+        </div>
+      </section>
+    } @else {
+      <!-- Active Show HUD -->
+      <section class="show-hud">
+        <div class="hud-top">
+          <div class="world-meta">
+            <div class="world-badge">
+              WORLD {{ journey.currentWorld().index }} / 11
+            </div>
+            <h2 class="world-title">{{ journey.currentWorld().name }}</h2>
+            <p class="world-theme">{{ journey.currentWorld().theme }}</p>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="hud-actions">
+            <button type="button" class="hud-btn" (click)="togglePause()">
+              {{ journey.status() === 'paused' ? '▶ Resume' : '⏸ Pause' }}
+            </button>
+            <button type="button" class="hud-btn" (click)="nextWorld()">
+              ⏭ Next World
+            </button>
+            <button type="button" class="hud-btn" (click)="randomWorld()">
+              🎲 Random
+            </button>
+            <button type="button" class="hud-btn" (click)="toggleWorldList()">
+              🌌 Worlds (11)
+            </button>
+            <button type="button" class="hud-btn" (click)="toggleFullscreen()">
+              ⛶ Fullscreen
+            </button>
+            <button type="button" class="hud-btn ghost" (click)="toggleUi()">
+              👁 Hide UI
+            </button>
+          </div>
+        </div>
+
+        <!-- Expandable World Quick Selector Carousel -->
+        @if (showWorldList()) {
+          <div class="world-drawer">
+            <div class="drawer-header">
+              <span>Select Visual World to Crossfade:</span>
+              <button type="button" class="close-drawer-btn" (click)="toggleWorldList()">✕</button>
+            </div>
+            <div class="world-chips-grid">
+              @for (w of allWorlds; track w.id) {
+                <button
+                  type="button"
+                  class="world-chip"
+                  [class.active]="w.id === journey.currentWorld().id"
+                  (click)="jumpToWorld(w.id)"
+                >
+                  <span class="chip-num">{{ w.index }}</span>
+                  <span class="chip-name">{{ w.name }}</span>
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        @if (journey.status() === 'complete') {
+          <div class="complete-banner">
+            ✨ The journey has landed. Infinite starlight remains.
+          </div>
+        }
+      </section>
+    }
+  }
+</div>
