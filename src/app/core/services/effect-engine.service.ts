@@ -14,6 +14,7 @@ export interface EffectState {
 
 @Injectable({ providedIn: 'root' })
 export class EffectEngineService {
+  intensity = 0.72;
   readonly state: EffectState = {
     strengths: createEffectStrengths(),
     cameraMix: 0.45,
@@ -33,7 +34,7 @@ export class EffectEngineService {
     for (const key of Object.keys(s) as EffectId[]) {
       const base = world.effects[key] ?? 0;
       const mul = this.multipliers[key] ?? 1;
-      s[key] = base * mul;
+      s[key] = base * mul * this.intensity;
     }
 
     this.state.cameraMix = world.cameraMix;
@@ -53,7 +54,7 @@ export class EffectEngineService {
 
   private applyBindings(bindings: AudioBinding[], amount: number): void {
     for (const binding of bindings) {
-      const delta = binding.amount * amount;
+      const delta = binding.amount * amount * this.intensity;
       if (binding.effect === 'cameraMix') {
         this.state.cameraMix += delta;
       } else if (binding.effect === 'hueShift') {

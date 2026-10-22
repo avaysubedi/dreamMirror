@@ -10,18 +10,15 @@ export class CameraStreamService {
   readonly torchSupported = signal(false);
   readonly resolution = signal<{ width: number; height: number }>({ width: 0, height: 0 });
 
-  async start(facing: 'user' | 'environment' = 'user'): Promise<MediaStream> {
+  async start(facing: 'user' | 'environment' = 'user', deviceId?: string): Promise<MediaStream> {
     this.stop();
     this.facing.set(facing);
     this.error.set(null);
 
     // Guard for Secure Context (HTTPS requirement on mobile devices)
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      const isHttp = typeof window !== 'undefined' && window.location.protocol === 'http:';
-      const isNotLocal = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-      if (isHttp && isNotLocal) {
-        const httpsUrl = 'https://' + window.location.host + window.location.pathname + window.location.search;
-        const msg = 'HTTPS is required on mobile browsers for camera access. Switch to HTTPS: ' + httpsUrl;
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || (typeof window !== 'undefined' && !window.isSecureContext)) {
+      if (typeof window !== 'undefined' && !window.isSecureContext) {
+        const msg = 'Camera access requires HTTPS on phones. On the computer, start the app with "npm run start:https", then open its HTTPS LAN address on this phone.';
         this.error.set(msg);
         throw new Error(msg);
       }
@@ -31,15 +28,24 @@ export class CameraStreamService {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: {
+      const videoConstraints: MediaTrackConstraints = {
           facingMode: { ideal: facing },
           width: { ideal: 1280, max: 1920 },
           height: { ideal: 720, max: 1080 },
           frameRate: { ideal: 30, max: 60 },
-        },
-      });
+      };
+      if (deviceId) videoConstraints.deviceId = { exact: deviceId };
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: videoConstraints,
+        });
+      } catch (err) {
+        // Older mobile browsers may expose cameras without facingMode metadata.
+        if (!(err instanceof Error) || err.name !== 'OverconstrainedError') throw err;
+        stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: videoConstraints });
+      }
       this.stream.set(stream);
       this.active.set(true);
 
@@ -62,8 +68,24 @@ export class CameraStreamService {
   }
 
   async switchCamera(): Promise<MediaStream> {
-    const next = this.facing() === 'user' ? 'environment' : 'user';
-    return this.start(next);
+    const previous = this.facing();
+    const next = previous === 'user' ? 'environment' : 'user';
+    const activeId = this.stream()?.getVideoTracks()[0]?.getSettings().deviceId;
+    let alternateId: string | undefined;
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cameras = devices.filter((device) => device.kind === 'videoinput');
+      alternateId = cameras.find((device) => device.deviceId !== activeId)?.deviceId;
+    } catch { /* Facing mode remains the fallback on browsers that hide device lists. */ }
+    try {
+      return await this.start(next, alternateId);
+    } catch (switchError) {
+      // Camera hardware can reject a facing-mode change. Restore the previous camera
+      // so a failed switch does not leave the preview and stream permanently stopped.
+      try { await this.start(previous); } catch { /* Surface the original switch error. */ }
+      this.error.set(switchError instanceof Error ? switchError.message : 'Could not switch camera.');
+      throw switchError;
+    }
   }
 
   async toggleTorch(): Promise<boolean> {

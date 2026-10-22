@@ -10,6 +10,7 @@ import { FULLSCREEN_VERT } from '../../visual/shaders/fullscreen.vert';
 import { EffectEngineService } from './effect-engine.service';
 import { ParticleSystemService } from './particle-system.service';
 import { TransitionManagerService } from './transition-manager.service';
+import { WorldEventId } from './world-event.service';
 
 @Injectable({ providedIn: 'root' })
 export class VisualEngineService {
@@ -36,6 +37,9 @@ export class VisualEngineService {
   private world: WorldConfig | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private canvas: HTMLCanvasElement | null = null;
+  private transformation = 0;
+  private eventType = 0;
+  private eventIntensity = 0;
 
   initialize(canvas: HTMLCanvasElement, video: HTMLVideoElement): void {
     this.dispose();
@@ -48,7 +52,10 @@ export class VisualEngineService {
       powerPreference: 'high-performance',
       alpha: false,
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, VISUAL_CONFIG.maxPixelRatio));
+    const quality = localStorage.getItem('dm-quality') || 'balanced';
+    this.transformation = Number(localStorage.getItem('dm-transform') || '0');
+    const cap = quality === 'performance' ? 1 : quality === 'high' ? 1.75 : VISUAL_CONFIG.maxPixelRatio;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, cap));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.autoClear = false;
     this.renderer = renderer;
@@ -113,6 +120,20 @@ export class VisualEngineService {
   setWorld(world: WorldConfig): void {
     this.world = world;
     this.particles.configure(world);
+  }
+
+  setIntensity(value: number): void {
+    this.effects.intensity = Math.max(0.2, Math.min(1, value));
+  }
+
+  setWorldEvent(type: WorldEventId | null, intensity: number): void {
+    this.eventType = type ? eventIndex[type] : 0;
+    this.eventIntensity = Math.max(0, Math.min(1, intensity));
+  }
+
+  setTransformation(index: number): void {
+    this.transformation = Math.max(0, Math.min(7, Math.floor(index)));
+    localStorage.setItem('dm-transform', String(this.transformation));
   }
 
   start(): void {
@@ -214,6 +235,9 @@ export class VisualEngineService {
       uTrails: { value: 0 },
       uPixelSort: { value: 0 },
       uShockwave: { value: 0 },
+      uTransform: { value: 0 },
+      uEventType: { value: 0 },
+      uEventIntensity: { value: 0 },
     };
   }
 
@@ -262,6 +286,9 @@ export class VisualEngineService {
     u['uTrails']!.value = s.motionTrails;
     u['uPixelSort']!.value = s.pixelSort;
     u['uShockwave']!.value = s.shockwaves;
+    u['uTransform']!.value = this.transformation;
+    u['uEventType']!.value = this.eventType;
+    u['uEventIntensity']!.value = this.eventIntensity;
   }
 
   private resize(): void {
@@ -300,3 +327,8 @@ export class VisualEngineService {
 function setVec3(target: THREE.Vector3, rgb: [number, number, number]): void {
   target.set(rgb[0], rgb[1], rgb[2]);
 }
+
+const eventIndex: Record<WorldEventId, number> = {
+  banana: 1, ufo: 2, cat: 3, duck: 4, portal: 5,
+  mothership: 6, laser: 7, anomaly: 8, pizza: 9, rain: 10,
+};

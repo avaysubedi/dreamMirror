@@ -7,7 +7,7 @@
     <div class="telemetry-bar">
       <span class="status-pill" [class.live]="webrtc.status() === 'connected'">
         <span class="dot"></span>
-        {{ webrtc.status() === 'connected' ? 'Connected' : webrtc.status() }}
+        {{ webrtc.status() === 'connected' ? 'Connected' : webrtc.status() === 'connecting' ? 'Connecting… keep this page open' : webrtc.status() }}
       </span>
       <span class="status-pill">
         Connected Users: {{ webrtc.connectedUsers() }}
@@ -27,12 +27,9 @@
     <div class="https-alert-card">
       <div class="alert-icon">🔒</div>
       <div class="alert-body">
-        <h4>HTTPS Required for Mobile Camera</h4>
-        <p>Mobile browsers block camera permissions over plain HTTP on local Wi-Fi. Tap below to switch to the secure HTTPS link:</p>
-        <button type="button" class="btn-switch-https" (click)="goToHttps()">
-          Switch to HTTPS ({{ httpsUrl() }})
-        </button>
-        <small class="alert-hint">Note: If your browser shows a "Not Private / Certificate" warning, tap <strong>Advanced</strong> and then <strong>Proceed to 192.168.1.79</strong> to grant camera access.</small>
+        <h4>Secure camera connection required</h4>
+        <p>This page is not a secure browser context. Phone browsers block camera access on a local network unless HTTPS is active and its certificate is accepted.</p>
+        <small class="alert-hint">On the computer, restart DreamMirror with <code>npm run start:https</code>, open <code>https://&lt;computer-LAN-IP&gt;:4200/connect</code>, then scan its new QR code. The HTTPS certificate must be accepted by this phone.</small>
       </div>
     </div>
   }
@@ -50,6 +47,16 @@
     <!-- Overlay quick controls -->
     <div class="viewport-overlay">
       <div class="overlay-row">
+        <button
+          type="button"
+          class="icon-btn flip-camera-btn"
+          [disabled]="switchingCamera() || !camera.active()"
+          (click)="switchCamera()"
+          title="Switch between front and back camera"
+          aria-label="Switch camera"
+        >
+          <span>{{ switchingCamera() ? 'Switching…' : '⟳ Flip camera' }}</span>
+        </button>
         <button
           type="button"
           class="icon-btn"
@@ -91,10 +98,10 @@
     </div>
   </div>
 
-  @if (error()) {
+  @if (error() || webrtc.error()) {
     <div class="error-banner">
       <span class="error-icon">⚠</span>
-      <p class="error-text">{{ error() }}</p>
+      <p class="error-text">{{ error() || webrtc.error() }}</p>
     </div>
   }
 
@@ -124,14 +131,13 @@
       </div>
     }
 
-    <div class="action-grid">
-      <button type="button" class="btn primary" (click)="switchCamera()">
-        <span class="btn-icon">🔄</span> Switch Camera
-      </button>
-      <button type="button" class="btn ghost" (click)="reconnect()">
-        <span class="btn-icon">⚡</span> Connect to Visualizer
-      </button>
-    </div>
+    @if (webrtc.status() !== 'connected') {
+      <div class="action-grid">
+        <button type="button" class="btn ghost" (click)="reconnect()">
+          <span class="btn-icon">⚡</span> Retry camera connection
+        </button>
+      </div>
+    }
 
     <div class="footer-meta">
       <span>Target Latency: &lt;500ms</span>

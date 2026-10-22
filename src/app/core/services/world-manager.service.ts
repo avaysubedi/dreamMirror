@@ -70,8 +70,8 @@ export class WorldManagerService {
   }
 
   randomWorld(rng: SeededRng): WorldConfig {
-    const options = this.playlist().filter((world) => !world.isFinale && world.id !== this.current().id);
-    const pick = rng.weightedPick(options.length ? options : this.playlist(), (world) => world.narrativeWeight);
+    const options = WORLD_REGISTRY.filter((world) => !world.isFinale && world.id !== this.current().id);
+    const pick = rng.weightedPick(options.length ? options : WORLD_REGISTRY, (world) => world.narrativeWeight);
     this.jumpTo(pick.id);
     return pick;
   }

@@ -14,7 +14,7 @@ void main() {
   vDepthFade = smoothstep(1.0, 3.0, dist);
   float psize = aSize * uPointScale * (1.0 + uBass * 0.4) * (70.0 / dist);
   // Strictly clamp point size to prevent screen-filling white circles
-  gl_PointSize = clamp(psize, 1.0, 36.0);
+  gl_PointSize = clamp(psize, 1.0, 18.0);
   gl_Position = projectionMatrix * mv;
 }
 `;

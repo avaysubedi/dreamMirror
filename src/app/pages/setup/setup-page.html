@@ -1,0 +1,43 @@
+<main class="setup-page">
+  <header class="page-heading">
+    <p class="brand-kicker">DreamMirror · Operator Deck</p>
+    <h1>Prepare your journey</h1>
+    <p class="subtitle">Choose a world and soundtrack. The display opens clean and fullscreen.</p>
+  </header>
+
+  <section class="setup-card">
+    <div class="primary-settings">
+      <label class="field world-field">World
+        <select [value]="world()" (change)="world.set($any($event.target).value)">
+          @for (w of worlds; track w.id) { <option [value]="w.id">{{ w.name }}</option> }
+        </select>
+      </label>
+      <label class="field">Effect intensity
+        <div class="range-row"><input type="range" min="0.2" max="1" step="0.05" [value]="intensity()" (input)="intensity.set(+$any($event.target).value)"><span>{{ (intensity()*100).toFixed(0) }}%</span></div>
+      </label>
+      <label class="field">Quality
+        <select [value]="quality()" (change)="quality.set($any($event.target).value)"><option value="performance">Performance</option><option value="balanced">Balanced</option><option value="high">High</option></select>
+      </label>
+    </div>
+
+    <section class="audio-section">
+      <div class="section-heading"><p class="card-kicker">Soundtrack</p><h2>Choose your audio</h2></div>
+      <div class="audio-tabs" role="group" aria-label="Audio source">
+        <button type="button" class="tab" [class.active]="audioMode() === 'demo'" (click)="audioMode.set('demo')"><span>♫</span> Rave Synth Demo</button>
+        <button type="button" class="tab" [class.active]="audioMode() === 'mic'" (click)="audioMode.set('mic')"><span>◉</span> Live Mic / Line-In</button>
+        <label class="tab file-tab" [class.active]="audioMode() === 'file'" (click)="audioMode.set('file')"><span>▣</span> Audio File<input type="file" accept="audio/*" (change)="selectAudio($event)"></label>
+      </div>
+      <p class="track-label">{{ audioMode() === 'demo' ? 'Procedural Rave Synth' : audioMode() === 'mic' ? 'Live audio input' : audioFileName() || 'Choose a local audio file' }}</p>
+      @if (audioError()) { <p class="error-note">{{ audioError() }}</p> }
+    </section>
+
+    <details class="optional-look">
+      <summary>Optional body transformation</summary>
+      <label class="field">Visual style
+        <select [value]="transform()" (change)="transform.set($any($event.target).value)"><option value="0">Natural</option><option value="1">Galaxy body</option><option value="2">Hologram body</option><option value="3">Crystal body</option><option value="4">Liquid metal body</option><option value="5">Energy body</option><option value="6">Smoke body</option><option value="7">Neon body</option></select>
+      </label>
+    </details>
+
+    <button class="launch-button" type="button" (click)="launch()"><span>✦</span> Launch Display <span>✦</span></button>
+  </section>
+</main>

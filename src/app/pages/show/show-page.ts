@@ -99,23 +99,19 @@ export class ShowPage implements OnDestroy {
     switch (event.key.toLowerCase()) {
       case ' ':
         event.preventDefault();
-        this.togglePause();
+        this.surprise();
         break;
       case 'f':
         event.preventDefault();
         void this.toggleFullscreen();
         break;
-      case 'n':
+      case 'a':
         event.preventDefault();
-        this.nextWorld();
+        this.jumpToWorld('anime-world');
         break;
-      case 'r':
+      case 'c':
         event.preventDefault();
-        this.randomWorld();
-        break;
-      case 'h':
-        event.preventDefault();
-        this.toggleUi();
+        void this.flipCamera();
         break;
       case '1':
       case '2':
@@ -123,7 +119,15 @@ export class ShowPage implements OnDestroy {
       case '4':
       case '5':
       case '6':
+      {
+        const idx = parseInt(event.key, 10) - 1;
+        if (this.allWorlds[idx]) this.jumpToWorld(this.allWorlds[idx]!.id);
+        break;
+      }
       case '7':
+        event.preventDefault();
+        this.surprise();
+        break;
       case '8':
       case '9': {
         const idx = parseInt(event.key, 10) - 1;
@@ -139,6 +143,25 @@ export class ShowPage implements OnDestroy {
         if (this.allWorlds[10]) this.jumpToWorld(this.allWorlds[10]!.id);
         break;
     }
+  }
+
+  surprise(): void {
+    this.journey.surprise();
+    this.uiHidden.set(false);
+    this.scheduleHide();
+  }
+
+  async flipCamera(): Promise<void> {
+    if (this.webrtc.remoteStream()) {
+      this.webrtc.requestRemoteCameraSwitch();
+      return;
+    }
+    if (!this.localCamera) return;
+    try {
+      const stream = await this.camera.switchCamera();
+      this.localCamera = true;
+      this.bindStream(stream);
+    } catch { /* a remote phone camera cannot be switched from the display */ }
   }
 
   async startJourney(): Promise<void> {
@@ -273,9 +296,11 @@ export class ShowPage implements OnDestroy {
     const port = window.location.port || '4200';
     let url = '';
     if (preset === 'lan-https') {
-      url = `https://192.168.1.79:${port}`;
+      // Use current hostname (LAN IP) for HTTPS
+      url = `${window.location.protocol}//${window.location.hostname}:${port}`;
     } else if (preset === 'lan-http') {
-      url = `http://192.168.1.79:${port}`;
+      // Use current hostname (LAN IP) for HTTP
+      url = `http://${window.location.hostname}:${port}`;
     } else {
       url = `${window.location.protocol}//${window.location.hostname}:${port}`;
     }
@@ -284,9 +309,11 @@ export class ShowPage implements OnDestroy {
 
   private resolveInitialHostAddress(): string {
     const port = window.location.port || '4200';
-    // If on localhost or 127.0.0.1, default QR code to the LAN Wi-Fi IP so phone can scan directly
+    // If running on localhost, attempt to construct a LAN‑accessible address.
+    // Users can manually adjust the address via the preset buttons.
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return `https://192.168.1.79:${port}`;
+      // Replace with your LAN IP if known, e.g., http://192.168.1.42:${port}
+      return `${window.location.protocol}//${window.location.hostname}:${port}`;
     }
     return `${window.location.protocol}//${window.location.host}`;
   }
@@ -301,12 +328,27 @@ export class ShowPage implements OnDestroy {
     videoEl.playsInline = true;
     this.engine.initialize(canvasEl, videoEl);
     this.journey.prepare();
+    const chosenWorld = localStorage.getItem('dm-world');
+    if (chosenWorld) this.jumpToWorld(chosenWorld);
+    this.engine.setIntensity(Number(localStorage.getItem('dm-intensity') || '0.72'));
+    this.journey.start();
     this.engine.start();
+    this.scheduleHide();
+    if (sessionStorage.getItem('dm-local-camera') === '1') {
+      sessionStorage.removeItem('dm-local-camera');
+      try { this.localCamera = true; this.bindStream(await this.camera.start('user')); }
+      catch { /* camera remains available through the phone pairing link */ }
+    }
 
     // Default host address to LAN IP (or current origin)
     const defaultHost = this.resolveInitialHostAddress();
     this.hostAddress.set(defaultHost);
-    await this.startHost();
+    if (this.webrtc.hostId()) {
+      this.currentHostId = this.webrtc.hostId()!;
+      await this.generatePairingLink(this.hostAddress());
+    } else {
+      await this.startHost();
+    }
     this.zone.runOutsideAngular(() => this.loop());
   }
 
@@ -323,7 +365,7 @@ export class ShowPage implements OnDestroy {
   private async generatePairingLink(baseUrl: string): Promise<void> {
     if (!this.currentHostId) return;
     const cleanBase = baseUrl.trim().replace(/\/+$/, '');
-    const link = `${cleanBase}/camera?host=${encodeURIComponent(this.currentHostId)}`;
+    const link = `${cleanBase}/camera?host=${encodeURIComponent(this.currentHostId)}&facing=${this.camera.facing()}`;
     this.cameraLink.set(link);
     try {
       const dataUrl = await this.qr.dataUrl(link);

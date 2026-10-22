@@ -4,7 +4,7 @@ export const WORLD_REGISTRY: WorldConfig[] = [
   {
     id: 'cosmic-birth',
     index: 1,
-    name: 'Cosmic Birth',
+    name: 'Astral Realm',
     theme: 'Journey Begins',
     phase: 1,
     narrativeWeight: 1.2,
@@ -41,7 +41,7 @@ export const WORLD_REGISTRY: WorldConfig[] = [
   {
     id: 'cloud-kingdom',
     index: 2,
-    name: 'Cloud Kingdom',
+    name: 'Cyber Dimension',
     theme: 'Floating Through Heaven',
     phase: 2,
     narrativeWeight: 1,
@@ -74,7 +74,7 @@ export const WORLD_REGISTRY: WorldConfig[] = [
   {
     id: 'fractal-temple',
     index: 3,
-    name: 'Fractal Temple',
+    name: 'Dreamscape',
     theme: 'Mystical Awakening',
     phase: 2,
     narrativeWeight: 1.1,
@@ -106,7 +106,7 @@ export const WORLD_REGISTRY: WorldConfig[] = [
   {
     id: 'rainbow-warp',
     index: 4,
-    name: 'Rainbow Warp',
+    name: 'Psychedelic Jungle',
     theme: 'Reality Dissolving',
     phase: 1,
     narrativeWeight: 1,
@@ -139,7 +139,7 @@ export const WORLD_REGISTRY: WorldConfig[] = [
   {
     id: 'interdimensional-eyes',
     index: 5,
-    name: 'Interdimensional Eyes',
+    name: 'Glitch Reality',
     theme: 'Peak Psychedelia',
     phase: 1,
     narrativeWeight: 1.15,
@@ -172,7 +172,7 @@ export const WORLD_REGISTRY: WorldConfig[] = [
   {
     id: 'astral-ocean',
     index: 6,
-    name: 'Astral Ocean',
+    name: 'Meme World',
     theme: 'Dream State',
     phase: 2,
     narrativeWeight: 1,
@@ -368,6 +368,32 @@ export const WORLD_REGISTRY: WorldConfig[] = [
     preferredTransitions: ['particle-collapse', 'cosmic-flash', 'light-burst'],
   },
 ];
+
+// The fun worlds reuse the existing effect and transition plugins, with their own palettes,
+// pacing, and procedural scene accents in the composite shader.
+const funWorlds: Array<Pick<WorldConfig, 'id' | 'name' | 'theme' | 'palette' | 'particles'>> = [
+  { id: 'banana-dimension', name: 'Banana Dimension', theme: 'Banana rain and vortexes', palette: { id: 'banana-sun', primary: [1, .78, .08], secondary: [.32, .72, .16], accent: [1, .94, .4], fog: [.12, .08, .01] }, particles: { preset: 'petals', countScale: .45, size: 1.5, speed: .38 } },
+  { id: 'ufo-invasion', name: 'UFO Invasion', theme: 'Portals across the night sky', palette: { id: 'ufo-night', primary: [.12, .8, .72], secondary: [.3, .18, .8], accent: [.4, 1, .86], fog: [.01, .03, .1] }, particles: { preset: 'stars', countScale: .4, size: 1.1, speed: .65 } },
+  { id: 'cat-dimension', name: 'Cat Dimension', theme: 'Cosmic cats and laser eyes', palette: { id: 'cat-cosmos', primary: [.85, .26, .72], secondary: [.3, .2, .72], accent: [1, .6, .86], fog: [.08, .01, .1] }, particles: { preset: 'stardust', countScale: .35, size: 1.3, speed: .24 } },
+  { id: 'duck-world', name: 'Duck World', theme: 'A storm of ducks', palette: { id: 'duck-lake', primary: [.98, .72, .12], secondary: [.16, .58, .86], accent: [1, .92, .4], fog: [.02, .1, .17] }, particles: { preset: 'feathers', countScale: .45, size: 1.7, speed: .34 } },
+  { id: 'pizza-universe', name: 'Pizza Universe', theme: 'Pizza planets and portals', palette: { id: 'pizza-nebula', primary: [.94, .24, .08], secondary: [.9, .64, .12], accent: [1, .88, .44], fog: [.12, .03, .01] }, particles: { preset: 'embers', countScale: .35, size: 1.4, speed: .3 } },
+  { id: 'meme-mix', name: 'Meme Dimension', theme: 'Surprise mix of playful worlds', palette: { id: 'meme-pop', primary: [.96, .18, .6], secondary: [.12, .8, .92], accent: [1, .86, .18], fog: [.05, .01, .08] }, particles: { preset: 'sparks', countScale: .45, size: 1.3, speed: .55 } },
+];
+
+for (const [offset, fun] of funWorlds.entries()) {
+  const base = WORLD_REGISTRY[offset % 5]!;
+  WORLD_REGISTRY.push({ ...base, ...fun, index: 12 + offset, phase: 2, narrativeWeight: 1, isOpener: false, isFinale: false, cameraMix: .86, effects: { ...base.effects, dreamBlur: .08, glow: .3, particleBursts: .12 }, durationRangeMs: [24000, 36000], preferredTransitions: ['portal-opening', 'cosmic-flash', 'light-burst'] });
+}
+
+WORLD_REGISTRY.push({
+  id: 'anime-world', index: 18, name: 'Anime World', theme: 'Hand-drawn music dream', phase: 3, narrativeWeight: 1,
+  palette: { id: 'celestial-ink', primary: [.16, .34, .9], secondary: [.98, .28, .52], accent: [1, .88, .48], fog: [.025, .035, .12] },
+  cameraMix: .92,
+  effects: { glow: .22, bloom: .16, kaleidoscope: .04, rgbSplit: .02 },
+  particles: { preset: 'stars', countScale: .12, size: .75, speed: .08 },
+  audio: { bass: [{ effect: 'glow', amount: .35 }], mid: [{ effect: 'hueShift', amount: .06 }], treble: [{ effect: 'bloom', amount: .18 }], peaks: [{ effect: 'shockwaves', amount: .12 }], drops: [{ effect: 'glow', amount: .2 }] },
+  durationRangeMs: [26000, 40000], preferredTransitions: ['light-burst', 'portal-opening', 'cosmic-flash'],
+});
 
 export function worldById(id: string): WorldConfig | undefined {
   return WORLD_REGISTRY.find((world) => world.id === id);

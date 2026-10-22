@@ -1,4 +1,4 @@
-import { afterNextRender, Component, ElementRef, OnDestroy, inject, signal, viewChild } from '@angular/core';
+import { afterNextRender, Component, ElementRef, OnDestroy, effect, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CameraStreamService } from '../../core/services/camera-stream.service';
 import { WebRTCService } from '../../core/services/webrtc.service';
@@ -20,9 +20,17 @@ export class CameraPage implements OnDestroy {
   readonly mirrorPreview = signal(true);
   readonly isFullscreen = signal(false);
   readonly isHttpOnLan = signal(false);
-  readonly httpsUrl = signal('');
+  readonly switchingCamera = signal(false);
 
   constructor() {
+    let handledSwitchRequest = this.webrtc.cameraSwitchRequest();
+    effect(() => {
+      const request = this.webrtc.cameraSwitchRequest();
+      if (request > handledSwitchRequest) {
+        handledSwitchRequest = request;
+        void this.switchCamera();
+      }
+    });
     afterNextRender(() => {
       this.checkSecurityContext();
       void this.boot();
@@ -36,33 +44,36 @@ export class CameraPage implements OnDestroy {
 
   private checkSecurityContext(): void {
     if (typeof window === 'undefined') return;
-    const isHttp = window.location.protocol === 'http:';
     const isLan = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-    if (isHttp && isLan) {
+    if (!window.isSecureContext && isLan) {
       this.isHttpOnLan.set(true);
-      const targetHttps = 'https://' + window.location.host + window.location.pathname + window.location.search;
-      this.httpsUrl.set(targetHttps);
-    }
-  }
-
-  goToHttps(): void {
-    if (this.httpsUrl()) {
-      window.location.href = this.httpsUrl();
     }
   }
 
   async switchCamera(): Promise<void> {
+    if (this.switchingCamera()) return;
+    this.switchingCamera.set(true);
     try {
       this.error.set(null);
       const stream = await this.camera.switchCamera();
       this.mirrorPreview.set(this.camera.facing() === 'user');
       this.attachPreview(stream);
       const host = this.hostId();
-      if (host) {
-        await this.webrtc.connectToHost(host, stream);
+      if (host && (this.webrtc.status() === 'connected' || this.webrtc.status() === 'connecting')) {
+        await this.webrtc.replaceOutgoingVideo(stream);
       }
     } catch (err) {
+      const restored = this.camera.stream();
+      if (restored) {
+        this.mirrorPreview.set(this.camera.facing() === 'user');
+        this.attachPreview(restored);
+        if (this.hostId() && (this.webrtc.status() === 'connected' || this.webrtc.status() === 'connecting')) {
+          try { await this.webrtc.replaceOutgoingVideo(restored); } catch { /* Keep the restored local preview. */ }
+        }
+      }
       this.error.set(err instanceof Error ? err.message : 'Could not switch camera');
+    } finally {
+      this.switchingCamera.set(false);
     }
   }
 
@@ -87,7 +98,7 @@ export class CameraPage implements OnDestroy {
   async connectToHost(targetHostId?: string): Promise<void> {
     const host = (targetHostId ?? this.manualHostInput() ?? this.hostId() ?? '').trim();
     if (!host) {
-      this.error.set('Please enter a Host Room ID or scan the QR code from the Show page.');
+      this.error.set('Open the camera link from the DreamMirror Connect page, or enter its Host Room ID.');
       return;
     }
     this.hostId.set(host);
@@ -101,7 +112,7 @@ export class CameraPage implements OnDestroy {
       }
       await this.webrtc.connectToHost(host, stream);
     } catch (err) {
-      this.error.set(err instanceof Error ? err.message : 'Connection failed. Ensure the Show page is open.');
+      this.error.set(err instanceof Error ? err.message : 'Connection failed. Keep the DreamMirror Display open and try again.');
     }
   }
 
@@ -123,7 +134,9 @@ export class CameraPage implements OnDestroy {
       this.attachPreview(stream);
 
       if (host) {
+        this.error.set('Camera ready. Connecting to the computer…');
         await this.webrtc.connectToHost(host, stream);
+        this.error.set(null);
       } else {
         this.error.set('No Show Host ID detected. Enter the Host ID below or scan the QR code.');
       }

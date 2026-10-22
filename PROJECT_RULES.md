@@ -233,6 +233,22 @@ Whenever making changes:
 5. Extend through configuration first.
 6. Refactor before creating new systems.
 
+EXPERIENCE FLOW RULES
+
+The app has three primary pages:
+
+1. Connect: simple HTTPS phone QR/link and optional local camera action.
+2. Setup: world, intensity, quality, and audio source selection (demo, microphone, or local audio file).
+3. Display: fullscreen visuals and the fading shortcut guide only.
+
+Camera switching belongs on the active camera preview. Do not require a front/back choice on Connect or Setup; make the phone preview's flip control available while streaming.
+
+Preserve existing app capabilities when changing page structure. Move controls to their correct page instead of deleting them. In particular, audio source selection and file playback must remain available in Setup, while audio analysis stays in AudioAnalyzerService. Keep the Display free of setup and debug panels.
+
+Keep the operator flow simple. Put optional controls behind a disclosure and avoid adding duplicate settings or connection flows.
+
+The development server must only start after an explicit user command. Do not add auto-run or auto-restart behavior to VS Code tasks, launch configurations, package scripts, or process managers.
+
 SUCCESS METRIC
 
 The user should feel:

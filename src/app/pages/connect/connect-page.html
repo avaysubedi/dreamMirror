@@ -1,0 +1,33 @@
+<main class="connect-page">
+  <header class="page-heading">
+    <p class="brand-kicker">DreamMirror · Become the Music</p>
+    <h1>Connect your camera</h1>
+    <p class="subtitle">Scan this code with your phone. Keep the camera page open while your visual journey runs.</p>
+  </header>
+
+  <section class="connect-card">
+    <div class="qr-frame">
+      @if (qr()) {
+        <img [src]="qr()" alt="Scan to connect your phone camera">
+      } @else {
+        <div class="qr-placeholder"><span>✦</span><small>Secure phone link</small></div>
+      }
+    </div>
+    <div class="connect-details">
+      <div class="status-line"><span class="status-dot" [class.ready]="phoneLink()"></span>{{ status() }}</div>
+      <label for="phone-origin">Computer HTTPS address</label>
+      <div class="address-row">
+        <input id="phone-origin" type="url" placeholder="https://192.168.1.20:4200" [value]="phoneOrigin()" (input)="updatePhoneOrigin($any($event.target).value)">
+        <button class="copy-button" type="button" [disabled]="!phoneLink()" (click)="copyLink()">{{ copied() ? 'Copied' : 'Copy link' }}</button>
+      </div>
+      <a class="phone-link" [href]="phoneLink()" target="_blank" rel="noreferrer">{{ phoneLink() || 'Enter this computer’s HTTPS LAN address to create the phone link.' }}</a>
+      @if (error()) { <p class="error-note">{{ error() }}</p> }
+      <p class="secure-note">Phone camera requires HTTPS. On Windows, run <code>ipconfig</code> and use the IPv4 address under the active Wi-Fi or Ethernet adapter. The HTTPS certificate must be accepted on the phone.</p>
+    </div>
+  </section>
+
+  <div class="local-row">
+    <span>Rehearsing without a phone?</span>
+    <button type="button" class="local-button" (click)="connectThisComputer()">Use this computer’s camera</button>
+  </div>
+</main>

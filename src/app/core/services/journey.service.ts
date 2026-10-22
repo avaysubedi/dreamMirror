@@ -6,6 +6,7 @@ import { RandomizationService } from './randomization.service';
 import { TransitionManagerService } from './transition-manager.service';
 import { VisualEngineService } from './visual-engine.service';
 import { WorldManagerService } from './world-manager.service';
+import { WorldEventService } from './world-event.service';
 
 export type JourneyStatus = 'idle' | 'running' | 'paused' | 'complete';
 
@@ -16,6 +17,7 @@ export class JourneyService {
   private readonly effects = inject(EffectEngineService);
   private readonly random = inject(RandomizationService);
   private readonly engine = inject(VisualEngineService);
+  private readonly events = inject(WorldEventService);
 
   readonly status = signal<JourneyStatus>('idle');
   readonly seed = signal(0);
@@ -62,6 +64,8 @@ export class JourneyService {
     if (this.status() !== 'running') {
       return;
     }
+    const event = this.events.tick(now, this.currentWorld().id, this.rng!);
+    this.engine.setWorldEvent(event.type, event.intensity);
     if (this.worlds.shouldAdvance(now, drop) && !this.transitions.active()) {
       this.advance();
     }
@@ -80,6 +84,25 @@ export class JourneyService {
     }
     const world = this.worlds.randomWorld(this.rng);
     this.crossfadeTo(world, () => undefined);
+  }
+
+  surprise(): 'world' | 'transformation' | 'event' {
+    if (!this.rng) this.prepare();
+    const choice = this.rng!.int(0, 2);
+    if (choice === 0) {
+      this.randomWorld();
+      return 'world';
+    }
+    if (choice === 1) {
+      const current = Number(localStorage.getItem('dm-transform') || '0');
+      let next = this.rng!.int(1, 7);
+      if (next === current) next = (next % 7) + 1;
+      this.engine.setTransformation(next);
+      return 'transformation';
+    }
+    const event = this.events.triggerNow(this.currentWorld().id, performance.now(), this.rng!);
+    this.engine.setWorldEvent(event.type, event.intensity);
+    return 'event';
   }
 
   private advance(): void {
