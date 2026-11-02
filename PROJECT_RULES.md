@@ -132,6 +132,26 @@ Avoid:
 - random flashing
 - chaotic unusable visuals
 
+ART DIRECTION (OVERRIDES OLDER EFFECT ROADMAP ITEMS)
+
+The goal is a crafted visual installation, not a demonstration of available shader tricks.
+Before adding an effect, ask: "Would a professional visual artist intentionally use this?"
+If the answer is not clearly yes, do not build it.
+
+Prefer elegant, stylized, cinematic, surreal imagery with a recognizable identity for each
+world. Transform the live camera image first. Use a small number of polished effects and
+restrained, intentional audio response.
+
+Avoid effects, objects, particles, or randomness added for their own sake; worlds that
+differ only by palette; meme spam; clutter; persistent overlays; and constant flashing.
+Worlds should establish different visual spaces (such as a cosmic temple, living jungle,
+digital architecture, surreal painting, or broken reality). Particles and events are
+optional accents and must never define a world.
+
+Camera transformations (cartoon, ink, silhouette, painterly, holographic, and related
+looks) take priority over decorative backgrounds. Each should materially change the live
+camera image while preserving readability and avoiding unnecessary GPU work.
+
 PERFORMANCE RULES
 
 Target:
@@ -241,7 +261,9 @@ The app has three primary pages:
 2. Setup: world, intensity, quality, and audio source selection (demo, microphone, or local audio file).
 3. Display: fullscreen visuals and the fading shortcut guide only.
 
-Camera switching belongs on the active camera preview. Do not require a front/back choice on Connect or Setup; make the phone preview's flip control available while streaming.
+The Setup page includes a live camera preview and flip control so the chosen camera can be checked before launch. Camera switching belongs on an active preview, not a disconnected front/back choice.
+
+Display may include a compact world picker so worlds can be changed during the experience. Keep it touch friendly, transient, and separate from setup/debug controls.
 
 Preserve existing app capabilities when changing page structure. Move controls to their correct page instead of deleting them. In particular, audio source selection and file playback must remain available in Setup, while audio analysis stays in AudioAnalyzerService. Keep the Display free of setup and debug panels.
 

@@ -21,6 +21,7 @@ import { QrService } from '../../core/services/qr.service';
 import { VisualEngineService } from '../../core/services/visual-engine.service';
 import { WebRTCService } from '../../core/services/webrtc.service';
 import { WorldManagerService } from '../../core/services/world-manager.service';
+import { CastService } from '../../core/services/cast.service';
 
 @Component({
   selector: 'app-show-page',
@@ -33,6 +34,7 @@ export class ShowPage implements OnDestroy {
   private readonly audio = inject(AudioAnalyzerService);
   private readonly worlds = inject(WorldManagerService);
   readonly journey = inject(JourneyService);
+  readonly cast = inject(CastService);
   readonly webrtc = inject(WebRTCService);
   private readonly qr = inject(QrService);
   private readonly camera = inject(CameraStreamService);
@@ -49,6 +51,7 @@ export class ShowPage implements OnDestroy {
   readonly fullscreen = signal(false);
   readonly copyStatus = signal('');
   readonly showWorldList = signal(false);
+  readonly cameraMessage = signal('');
 
   // Live audio VU signals
   readonly vuBass = signal(0);
@@ -202,10 +205,11 @@ export class ShowPage implements OnDestroy {
   }
 
   jumpToWorld(worldId: string): void {
-    const world = this.worlds.jumpTo(worldId);
-    if (world) {
-      this.engine.setWorld(world);
-    }
+    this.journey.jumpToWorld(worldId);
+    void this.cast.selectWorld(worldId);
+    if (this.showWorldList()) this.showWorldList.set(false);
+    this.uiHidden.set(false);
+    this.scheduleHide();
   }
 
   toggleUi(): void {
@@ -217,6 +221,8 @@ export class ShowPage implements OnDestroy {
 
   toggleWorldList(): void {
     this.showWorldList.update((v) => !v);
+    this.uiHidden.set(false);
+    if (!this.showWorldList()) this.scheduleHide();
   }
 
   async toggleFullscreen(): Promise<void> {
@@ -270,8 +276,9 @@ export class ShowPage implements OnDestroy {
       const stream = await this.camera.start('user');
       this.localCamera = true;
       this.bindStream(stream);
+      this.cameraMessage.set('');
     } catch (err) {
-      console.warn('Could not start local device camera', err);
+      this.cameraMessage.set(err instanceof Error ? err.message : 'Could not start this device camera. Check browser permissions.');
     }
   }
 
@@ -334,10 +341,12 @@ export class ShowPage implements OnDestroy {
     this.journey.start();
     this.engine.start();
     this.scheduleHide();
-    if (sessionStorage.getItem('dm-local-camera') === '1') {
+    if (sessionStorage.getItem('dm-local-camera') === '1' || location.pathname.replace(/\/$/, '') === '/tv') {
       sessionStorage.removeItem('dm-local-camera');
-      try { this.localCamera = true; this.bindStream(await this.camera.start('user')); }
-      catch { /* camera remains available through the phone pairing link */ }
+      try { this.localCamera = true; this.bindStream(this.camera.stream() ?? await this.camera.start('user')); }
+      catch (error) { this.cameraMessage.set(error instanceof Error ? error.message : 'Allow camera access in the TV browser, then retry.'); }
+    } else if (location.pathname.replace(/\/$/, '') === '/tv' && !this.webrtc.remoteStream()) {
+      this.cameraMessage.set('Allow camera access on the TV, or connect a camera to continue.');
     }
 
     // Default host address to LAN IP (or current origin)
@@ -408,7 +417,7 @@ export class ShowPage implements OnDestroy {
   private scheduleHide(): void {
     window.clearTimeout(this.hideTimer);
     this.hideTimer = window.setTimeout(() => {
-      if (this.journey.status() === 'running') {
+      if (this.journey.status() === 'running' && !this.showWorldList()) {
         this.uiHidden.set(true);
       }
     }, VISUAL_CONFIG.hideUiMs);

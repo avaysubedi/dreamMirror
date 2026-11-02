@@ -12,6 +12,9 @@
           @for (w of worlds; track w.id) { <option [value]="w.id">{{ w.name }}</option> }
         </select>
       </label>
+      <label class="field">Camera look
+        <select [value]="transform()" (change)="transform.set(+$any($event.target).value)"><option value="0">Natural</option><option value="1">Cel shaded</option><option value="2">Ink illustration</option><option value="3">Silhouette</option><option value="4">Dream paint</option><option value="5">Holographic</option></select>
+      </label>
       <label class="field">Effect intensity
         <div class="range-row"><input type="range" min="0.2" max="1" step="0.05" [value]="intensity()" (input)="intensity.set(+$any($event.target).value)"><span>{{ (intensity()*100).toFixed(0) }}%</span></div>
       </label>
@@ -19,6 +22,27 @@
         <select [value]="quality()" (change)="quality.set($any($event.target).value)"><option value="performance">Performance</option><option value="balanced">Balanced</option><option value="high">High</option></select>
       </label>
     </div>
+
+    <section class="camera-check" aria-label="Camera preview">
+      <div class="camera-preview-copy">
+        <div><p class="card-kicker">Camera check</p><h2>{{ previewMode() === 'phone' ? 'Phone camera is live' : previewMode() === 'computer' ? 'Computer camera is live' : 'Preview your camera' }}</h2></div>
+        <div class="camera-actions">
+          @if (previewMode() === 'none') {
+            <button type="button" class="small-action" (click)="startComputerPreview()">Check computer camera</button>
+          }
+          @if (previewMode() !== 'none') {
+            <button type="button" class="small-action" [disabled]="switchingCamera()" (click)="switchPreviewCamera()">{{ switchingCamera() ? 'Switching…' : 'Flip camera' }}</button>
+          }
+        </div>
+      </div>
+      <div class="preview-window" [class.empty]="previewMode() === 'none'">
+        <video #cameraPreview autoplay playsinline muted [hidden]="previewMode() === 'none'"></video>
+        @if (previewMode() === 'none') { <p>Use the phone preview controls, or check the computer camera here.</p> }
+        @if (previewMode() === 'phone') { <span class="preview-badge">Phone</span> }
+        @if (previewMode() === 'computer') { <span class="preview-badge">Computer</span> }
+      </div>
+      @if (cameraPreviewError()) { <p class="error-note">{{ cameraPreviewError() }}</p> }
+    </section>
 
     <section class="audio-section">
       <div class="section-heading"><p class="card-kicker">Soundtrack</p><h2>Choose your audio</h2></div>
@@ -31,13 +55,9 @@
       @if (audioError()) { <p class="error-note">{{ audioError() }}</p> }
     </section>
 
-    <details class="optional-look">
-      <summary>Optional body transformation</summary>
-      <label class="field">Visual style
-        <select [value]="transform()" (change)="transform.set($any($event.target).value)"><option value="0">Natural</option><option value="1">Galaxy body</option><option value="2">Hologram body</option><option value="3">Crystal body</option><option value="4">Liquid metal body</option><option value="5">Energy body</option><option value="6">Smoke body</option><option value="7">Neon body</option></select>
-      </label>
-    </details>
-
-    <button class="launch-button" type="button" (click)="launch()"><span>✦</span> Launch Display <span>✦</span></button>
+    <div class="setup-actions">
+      <button class="back-button" type="button" (click)="backToConnect()">Back to Connect</button>
+      <button class="launch-button" type="button" (click)="launch()"><span>✦</span> Launch Display <span>✦</span></button>
+    </div>
   </section>
 </main>

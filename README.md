@@ -30,15 +30,15 @@ No file watcher, process manager, VS Code task, or debugger launch hook starts t
 
 ## Three page flow
 
-1. **Connect** (`/connect`) shows the secure phone QR/link and a local camera action. The phone opens `/camera` from the link and sends its camera through WebRTC.
-2. **Setup** (`/setup`) selects a world, effect intensity, quality, and audio source (demo music, microphone, or a local audio file). Optional body looks are tucked away. Launch display opens the visual experience.
-3. **Display** (`/display`) is a fullscreen visual canvas with a small shortcut guide. It has no settings panel or debug readouts.
+1. **Connect** (`/connect`) shows the phone QR/link and offers the computer camera path. The phone opens `/camera` from the link and sends its camera through WebRTC.
+2. **Setup** (`/setup`) previews the live phone or computer camera, offers a flip control, and selects a world, camera look, intensity, quality, and audio source (demo music, microphone, or local audio file).
+3. **Display** (`/display`) is a fullscreen visual canvas with a touch friendly world picker and fading shortcut guide. It has no setup or debug panels.
 
 ## Worlds and visuals
 
-Worlds are entries in `src/app/visual/worlds/world-registry.ts` and use the existing shader, transition, and effect services. The visual set includes Astral Realm, Cyber Dimension, Dreamscape, Psychedelic Jungle, Glitch Reality, Meme World, plus Banana Dimension, UFO Invasion, Cat Dimension, Duck World, Pizza Universe, and a mixed Meme Dimension. Fun worlds use low-count motion accents and procedural silhouettes. A world event service chooses sparse, themed events such as giant characters, laser sweeps, portals, motherships, rain, and visual anomalies.
+Worlds are entries in `src/app/visual/worlds/world-registry.ts` and use the existing shader, transition, and effect services. The visual set includes Astral Realm, Cyber Dimension, Dreamscape, Living Jungle, Glitch Reality, Astral Ocean, Energy Ascension, Angel Ascension, Galactic Flight, Buddha Peace, Return to Reality, and Anime World. Worlds have distinct image treatments; particles remain a supporting accent.
 
-The composite shader applies each world's palette, movement, camera treatment, and atmosphere. Camera blend is kept high and the particle budget is reduced to 520. Setup stores intensity and quality locally. The transformation selector adds Galaxy, Hologram, Crystal, Liquid Metal, Energy, Smoke, and Neon body looks through restrained shader tint, facets, scanlines, and edge light while preserving the live camera image.
+The composite shader applies each world's camera treatment and atmosphere. Setup stores intensity, quality, world, and camera look locally. The five camera looks are Cel shaded, Ink illustration, Silhouette, Dream paint, and Holographic. The particle budget is capped at 160.
 
 ## Camera and shortcuts
 
@@ -46,8 +46,9 @@ Switch between front and back cameras from the gold **Flip camera** control over
 
 Display shortcuts:
 
-- **1–6** select Astral, Cyber, Dream, Jungle, Glitch, or Meme.
-- **7** or **Space** selects a surprise world.
+- **1–6** select Astral, Cyber, Dream, Jungle, Glitch, or Ocean.
+- **7** or **Space** advances to the next world.
+- **A** selects Anime World.
 - **F** toggles fullscreen.
 - The shortcut guide fades while the display is inactive and returns on pointer movement.
 

@@ -1,8 +1,8 @@
 export const VISUAL_CONFIG = {
   targetFps: 60,
   maxPixelRatio: 1.5,
-  particleCount: 520,
-  minCameraPresence: 0.72,
+  particleCount: 160,
+  minCameraPresence: 0.56,
   feedbackDecay: 0.86,
   transitionDurationMs: [1100, 2200] as const,
   worldCooldownMs: 8000,

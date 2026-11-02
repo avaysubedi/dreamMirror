@@ -1,8 +1,21 @@
 <main class="stage-wrap" (pointermove)="onPointerMove()">
   <video #remoteVideo class="hidden-video" playsinline autoplay muted></video>
   <canvas #stage class="stage"></canvas>
+  <a class="tv-home" href="/connect" aria-label="DreamMirror home">DreamMirror</a>
+  <button type="button" class="cast-button" (click)="cast.connect()">Cast to TV</button>
+  @if (cast.message()) { <div class="cast-message" role="status">{{ cast.message() }}</div> }
+  @if (cameraMessage()) { <div class="camera-message" role="status"><span>{{ cameraMessage() }}</span><button type="button" (click)="useLocalCamera()">Enable camera</button></div> }
+  <button type="button" class="world-menu-button" [class.faded]="uiHidden() && !showWorldList()" (click)="toggleWorldList()" aria-label="Choose visual world">{{ journey.currentWorld().name }} <span>⌄</span></button>
+  @if (showWorldList()) {
+    <nav class="world-picker" aria-label="Choose a visual world">
+      <div class="world-picker-heading"><strong>Choose a world</strong><button type="button" (click)="toggleWorldList()" aria-label="Close world picker">×</button></div>
+      @for (world of allWorlds; track world.id) {
+        <button type="button" class="world-picker-item" [class.active]="journey.currentWorld().id === world.id" (click)="jumpToWorld(world.id)"><span>{{ world.index }}</span>{{ world.name }}</button>
+      }
+    </nav>
+  }
   <aside class="shortcut-guide" [class.faded]="uiHidden()">
-    <span>1 Astral</span><span>2 Cyber</span><span>3 Dream</span><span>4 Jungle</span><span>5 Glitch</span><span>6 Meme</span><span>7 Random</span>
+    <span>1 Astral</span><span>2 Cyber</span><span>3 Dream</span><span>4 Jungle</span><span>5 Glitch</span><span>6 Ocean</span><span>7 Next world</span>
     <i></i><span><b>A</b> Anime World</span><span><b>C</b> Flip Camera</span><span><b>F</b> Fullscreen</span><span><b>SPACE</b> Surprise</span>
   </aside>
 </main>

@@ -14,10 +14,10 @@ export interface JourneyVariation {
 export class RandomizationService {
   create(seed = Date.now()): { rng: SeededRng; variation: JourneyVariation } {
     const rng = new SeededRng(seed);
-    const hueTurns = rng.range(-0.08, 0.08);
+    const hueTurns = 0;
     const effectMultipliers: Partial<Record<EffectId, number>> = {};
     for (const id of EFFECT_IDS) {
-      effectMultipliers[id] = rng.range(0.82, 1.18);
+      effectMultipliers[id] = 1;
     }
     return {
       rng,

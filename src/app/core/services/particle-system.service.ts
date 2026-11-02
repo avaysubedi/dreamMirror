@@ -72,7 +72,7 @@ export class ParticleSystemService {
     const colors = this.geometry.attributes['aColor'] as THREE.BufferAttribute;
     const array = positions.array as Float32Array;
     const colorArr = colors.array as Float32Array;
-    const count = Math.max(48, Math.round(VISUAL_CONFIG.particleCount * world.particles.countScale));
+    const count = Math.max(24, Math.min(VISUAL_CONFIG.particleCount, Math.round(VISUAL_CONFIG.particleCount * world.particles.countScale)));
     this.geometry.setDrawRange(0, count);
     const burst = audio.beat * (world.effects.particleBursts ?? 0.2);
     const speed = world.particles.speed * speedMul * (1 + audio.energy);

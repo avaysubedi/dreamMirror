@@ -9,6 +9,7 @@ export const routes: Routes = [
   { path: 'connect', component: ConnectPage },
   { path: 'setup', component: SetupPage },
   { path: 'display', component: ShowPage },
+  { path: 'tv', component: ShowPage },
   { path: 'show', redirectTo: 'display', pathMatch: 'full' },
   { path: 'camera', component: CameraPage },
   { path: '**', redirectTo: 'show' },

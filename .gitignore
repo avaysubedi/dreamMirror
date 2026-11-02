@@ -33,6 +33,7 @@ yarn-error.log
 /.angular/cache
 .sass-cache/
 /connect.lock
+/public/dreammirror-network.json
 /coverage
 /libpeerconnection.log
 testem.log

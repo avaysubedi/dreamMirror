@@ -3,10 +3,10 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve --host 0.0.0.0 --ssl",
-    "start:https": "ng serve --host 0.0.0.0 --ssl",
-    "start:http": "ng serve --host 0.0.0.0",
-    "start:ssl": "ng serve --host 0.0.0.0 --ssl",
+    "start": "node scripts/start-dev.mjs --ssl",
+    "start:https": "node scripts/start-dev.mjs --ssl",
+    "start:http": "node scripts/start-dev.mjs",
+    "start:ssl": "node scripts/start-dev.mjs --ssl",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"

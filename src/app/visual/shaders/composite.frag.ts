@@ -48,8 +48,6 @@ uniform float uTrails;
 uniform float uPixelSort;
 uniform float uShockwave;
 uniform float uTransform;
-uniform float uEventType;
-uniform float uEventIntensity;
 
 float hash(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -167,71 +165,6 @@ vec2 shock(vec2 uv) {
   return uv + normalize(p + 0.0001) * ring * amp * 0.05;
 }
 
-float eyeSdf(vec2 p) {
-  float lid = length(p / vec2(0.38, 0.16)) - 1.0;
-  float iris = length(p) - 0.11;
-  float pupil = length(p * vec2(1.0, 1.15)) - 0.045;
-  float white = smoothstep(0.05, -0.02, lid);
-  float irisMask = smoothstep(0.03, -0.01, iris);
-  float pupilMask = smoothstep(0.02, 0.0, pupil);
-  return white * 0.65 + irisMask * 0.9 + pupilMask;
-}
-
-float filledCircle(vec2 p, vec2 center, float radius) {
-  return 1.0 - smoothstep(radius - 0.012, radius + 0.012, length(p - center));
-}
-
-float eventShape(vec2 p, float kind) {
-  float shape = 0.0;
-  vec2 q = p;
-  if (kind < 1.5) { // Giant banana
-    q.x *= 1.15;
-    float curve = 0.55 * q.x * q.x - 0.1;
-    shape = (1.0 - smoothstep(0.025, 0.055, abs(q.y - curve))) * smoothstep(0.43, 0.32, abs(q.x));
-    shape = max(shape, 1.0 - smoothstep(0.01, 0.035, abs(q.y - curve - 0.04)) * smoothstep(0.4, 0.3, abs(q.x)));
-  } else if (kind < 2.5 || kind > 5.5 && kind < 6.5) { // UFO or mothership
-    float scale = kind < 2.5 ? 1.0 : 1.65;
-    q *= scale;
-    float disc = filledCircle(q, vec2(0.0, 0.03), 0.29) * smoothstep(0.0, 0.1, q.y + 0.13);
-    float dome = filledCircle(q, vec2(0.0, 0.09), 0.14);
-    float beam = (1.0 - smoothstep(0.0, 0.025, abs(q.x) - (0.25 - abs(q.y) * 0.4))) * smoothstep(-0.02, -0.12, q.y) * smoothstep(-0.48, -0.24, q.y);
-    shape = max(max(disc, dome), beam * 0.65);
-  } else if (kind < 3.5) { // Giant cat face
-    float face = filledCircle(q, vec2(0.0, -0.02), 0.27);
-    float earL = (1.0 - smoothstep(0.02, 0.045, abs(q.x + 0.19) + abs(q.y - 0.2) * 0.62)) * step(q.y, 0.34) * step(0.1, q.y);
-    float earR = (1.0 - smoothstep(0.02, 0.045, abs(q.x - 0.19) + abs(q.y - 0.2) * 0.62)) * step(q.y, 0.34) * step(0.1, q.y);
-    float eyes = filledCircle(q, vec2(-0.1, 0.0), 0.025) + filledCircle(q, vec2(0.1, 0.0), 0.025);
-    float laser = (1.0 - smoothstep(0.004, 0.014, abs(q.y) - 0.006)) * step(0.11, abs(q.x)) * (1.0 - smoothstep(0.12, 0.48, abs(q.x)));
-    shape = max(max(face, max(earL, earR)), max(eyes, laser * uEventIntensity));
-  } else if (kind < 4.5) { // Giant duck
-    shape = max(filledCircle(q, vec2(-0.07, -0.08), 0.25), filledCircle(q, vec2(0.13, 0.13), 0.16));
-    float bill = (1.0 - smoothstep(0.0, 0.025, abs(q.y - 0.09))) * step(0.19, q.x) * (1.0 - smoothstep(0.19, 0.35, q.x));
-    shape = max(shape, bill);
-  } else if (kind < 5.5) { // Portal
-    float radius = length(q);
-    float ring = 1.0 - smoothstep(0.018, 0.045, abs(radius - 0.31));
-    float spiral = 1.0 - smoothstep(0.012, 0.035, abs(radius - (0.07 + 0.22 * fract(atan(q.y, q.x) * 0.45 + uTime * 0.12))));
-    shape = max(ring, spiral * 0.7);
-  } else if (kind < 7.5) { // Laser sweeps
-    float ray = 1.0 - smoothstep(0.003, 0.02, abs(q.y - 0.12 * sin(q.x * 9.0 + uTime * 2.0)));
-    shape = ray * smoothstep(0.52, 0.1, abs(q.x));
-  } else if (kind < 8.5) { // Glitch anomaly
-    float band = step(0.35, fract((q.y + uTime * 0.22) * 13.0));
-    shape = band * smoothstep(0.55, 0.05, abs(q.x + 0.06 * sin(q.y * 40.0 + uTime)));
-  } else if (kind < 9.5) { // Pizza slice / planet
-    float a = atan(q.y, q.x);
-    float wedge = (1.0 - smoothstep(0.48, 0.53, abs(a))) * (1.0 - smoothstep(0.3, 0.34, length(q))) * smoothstep(0.02, 0.08, length(q));
-    shape = wedge;
-    shape = max(shape, filledCircle(q, vec2(-0.08, 0.08), 0.035) * wedge);
-    shape = max(shape, filledCircle(q, vec2(0.08, 0.12), 0.03) * wedge);
-    shape = max(shape, filledCircle(q, vec2(0.02, -0.02), 0.028) * wedge);
-  } else { // Rain / asset storm
-    vec2 drops = fract((q + vec2(0.0, uTime * 0.42)) * vec2(8.0, 5.0)) - 0.5;
-    shape = (1.0 - smoothstep(0.018, 0.045, abs(drops.x))) * (1.0 - smoothstep(0.12, 0.22, abs(drops.y)));
-  }
-  return clamp(shape, 0.0, 1.0);
-}
-
 vec3 worldOverlay(vec2 uv, vec3 cam, float idx) {
   vec2 p = uv - 0.5;
   float t = uTime;
@@ -256,43 +189,35 @@ vec3 worldOverlay(vec2 uv, vec3 cam, float idx) {
     col += uPrimary * grid * 0.18 + uAccent * data * (0.16 + 0.18 * scan);
     col += uSecondary * pow(max(0.0, 1.0 - abs(p.x + 0.2 * sin(t * 0.3))), 4.0) * 0.04;
   } else if (idx < 3.5) {
-    // 3. Fractal Temple
-    float a = atan(p.y, p.x);
-    float r = length(p);
-    float mandala = sin(a * 8.0 + t * 0.4) * sin(r * 18.0 - t);
-    float rings = smoothstep(0.04, 0.0, abs(fract(r * 6.0 - t * 0.1) - 0.5));
-    col = mix(cam, uPrimary, 0.25 + 0.15 * abs(mandala));
-    col += uAccent * rings * 0.35;
-    col = mix(col, uSecondary, smoothstep(0.7, 0.15, r) * 0.2);
+    // 3. Dreamscape: an asymmetric, slowly breathing painted atmosphere.
+    vec2 drift = vec2(t * 0.025, -t * 0.018);
+    float cloud = fbm(uv * vec2(3.2, 2.1) + drift + vec2(sin(uv.y * 3.0), cos(uv.x * 2.0)) * 0.22);
+    float horizon = 0.5 + 0.12 * sin(uv.x * 4.0 + cloud * 2.2);
+    float veil = smoothstep(horizon - 0.16, horizon + 0.2, uv.y) * cloud;
+    col = mix(cam, mix(uSecondary, uPrimary, cloud), 0.14 + veil * 0.13);
+    col = mix(col, uAccent * (0.65 + cloud * 0.25), smoothstep(0.68, 0.92, cloud) * 0.16);
   } else if (idx < 4.5) {
-    // 4. Psychedelic Jungle: layered leaves and animated curling vines.
-    float leafWave = sin(uv.x * 21.0 + sin(uv.y * 8.0 + t * 0.45) * 1.7 + t * 0.3);
-    float leafVein = 1.0 - smoothstep(0.02, 0.07, abs(fract(uv.y * 6.0 + leafWave * 0.06) - 0.5));
-    float vine = 1.0 - smoothstep(0.008, 0.025, abs(p.x - 0.2 * sin(p.y * 8.0 + t * 0.7)));
-    float glowFlora = fbm(uv * 5.0 + vec2(t * 0.03, -t * 0.08));
-    col = mix(cam, hueRotate(cam, 0.08 + glowFlora * 0.08), 0.16);
-    col += uPrimary * leafVein * 0.09 + uSecondary * vine * 0.16;
-    col += uAccent * pow(glowFlora, 3.0) * 0.16;
+    // 4. Living Jungle: one organic tendril and softly pulsing chlorophyll field.
+    float life = fbm(uv * 3.1 + vec2(t * 0.018, -t * 0.035));
+    float tendril = 1.0 - smoothstep(0.012, 0.04, abs(p.x - 0.12 * sin(p.y * 5.2 + t * 0.16) - 0.06 * p.y));
+    float vein = 1.0 - smoothstep(0.015, 0.055, abs(p.y - 0.24 * sin(p.x * 4.0 + t * 0.08)));
+    col = mix(cam, uPrimary * (0.35 + life * 0.5) + cam * 0.42, 0.16);
+    col += uSecondary * tendril * 0.2 + uAccent * vein * (0.04 + life * 0.06);
   } else if (idx < 5.5) {
-    // 5. Interdimensional Eyes
-    float eyes = 0.0;
-    for (int i = 0; i < 8; i++) {
-      float fi = float(i);
-      float ang = fi * 0.785398 + t * 0.08;
-      vec2 ep = vec2(cos(ang), sin(ang)) * (0.22 + 0.08 * sin(t + fi));
-      eyes += eyeSdf((p - ep) * 2.4);
-    }
-    eyes += eyeSdf(p * mix(1.6, 1.1, uBass));
-    col = mix(cam, uFog * 0.3, 0.2);
-    col = mix(col, uPrimary, clamp(eyes, 0.0, 1.0) * 0.45);
-    col += uAccent * smoothstep(0.4, 1.2, eyes) * 0.25;
+    // 5. Glitch Reality: a single controlled fracture through the live image.
+    float seam = abs(fract(uv.y * 5.0 + 0.5) - 0.5);
+    float fracture = 1.0 - smoothstep(0.012, 0.035, seam);
+    float shift = fracture * (0.012 + uBass * 0.018) * sin(uv.y * 34.0 + t * 0.22);
+    vec3 broken = sampleVideo(uv + vec2(shift, 0.0));
+    col = mix(cam, broken, fracture * 0.62);
+    col += uAccent * fracture * 0.06;
   } else if (idx < 6.5) {
-    // 6. Meme World: a playful mix that rotates motifs instead of repeating a single effect.
-    float mode = mod(floor(t * 0.18), 4.0);
-    float pop = max(0.0, sin(uv.y * 16.0 + t * 1.8)) * 0.5 + 0.5;
-    float memeShape = mode < 1.0 ? eyeSdf(p * 1.8) : mode < 2.0 ? (1.0 - smoothstep(0.01, 0.05, abs(length(p) - 0.28))) : mode < 3.0 ? step(0.78, hash(floor(uv * 18.0 + t))) : pow(max(0.0, sin((p.x + p.y) * 18.0 + t)), 8.0);
-    col = mix(cam, hueRotate(cam, pop * 0.08), 0.12);
-    col += mix(uPrimary, uSecondary, pop) * memeShape * 0.19 + uAccent * memeShape * 0.12;
+    // 6. Astral Ocean: slow caustic light and layered tide lines.
+    float tide = sin(uv.y * 12.0 + sin(uv.x * 5.0 + t * 0.22) * 0.8);
+    float caustic = pow(max(0.0, sin(uv.x * 15.0 + sin(uv.y * 8.0 - t * 0.18) * 1.2)), 8.0);
+    float deep = smoothstep(-0.7, 0.75, tide);
+    col = mix(cam, mix(uFog, uPrimary, 0.32 + deep * 0.24), 0.17);
+    col += uSecondary * max(0.0, tide) * 0.075 + uAccent * caustic * 0.09;
   } else if (idx < 7.5) {
     // 7. Energy Ascension
     float bolt = 0.0;
@@ -330,57 +255,16 @@ vec3 worldOverlay(vec2 uv, vec3 cam, float idx) {
     col = mix(cam, uPrimary, 0.2 * lotus);
     col += uAccent * glowCenter * 0.35;
     col = mix(col, uSecondary, 0.12 * (1.0 - lotus));
-  } else if (idx > 11.5) {
-    // Playful worlds use one bold, slowly moving silhouette rather than a screen of particles.
-    float kind = idx - 12.0;
-    vec2 q = p;
-    float motif = 0.0;
-    if (kind < 0.5) { // Flying bananas curve down into a moving vortex.
-      q.x = mod(p.x + 0.5 + 0.12 * sin(uTime * 0.5 + p.y * 5.0), 0.62) - 0.31;
-      q.y = mod(p.y + uTime * 0.12, 0.82) - 0.41;
-      float peel = 0.24 * (q.x * q.x - 0.06) - 0.12;
-      motif = smoothstep(0.055, 0.015, abs(q.y - peel) - abs(q.x) * 0.2);
-      motif *= smoothstep(0.34, 0.22, abs(q.x));
-    } else if (kind < 1.5) { // UFO saucer and downward beam
-      q.x = mod(p.x + 0.5 + 0.12 * sin(uTime * 0.35 + p.y * 4.0), 0.72) - 0.36;
-      q.y = mod(p.y + 0.5 + 0.05 * sin(uTime + q.x * 7.0), 0.8) - 0.4;
-      float saucer = filledCircle(q * vec2(1.0, 2.4), vec2(0.0), 0.11);
-      float dome = filledCircle(q * vec2(1.0, 2.0), vec2(0.0, 0.09), 0.055);
-      float beam = (1.0 - smoothstep(0.025, 0.05, abs(q.x) - (0.13 - abs(q.y) * 0.25))) * smoothstep(-0.04, -0.15, q.y);
-      motif = max(max(saucer, dome), beam * 0.45);
-    } else if (kind < 2.5) { // Floating cat faces with bright eyes.
-      q = mod(p + 0.5, 0.78) - 0.39;
-      float face = filledCircle(q, vec2(0.0, -0.015), 0.12);
-      float earL = (1.0 - smoothstep(0.015, 0.035, abs(q.x + 0.075) + abs(q.y - 0.1) * 0.55)) * step(0.02, q.y);
-      float earR = (1.0 - smoothstep(0.015, 0.035, abs(q.x - 0.075) + abs(q.y - 0.1) * 0.55)) * step(0.02, q.y);
-      float eyes = filledCircle(q, vec2(-0.045, -0.005), 0.012) + filledCircle(q, vec2(0.045, -0.005), 0.012);
-      motif = max(max(face, max(earL, earR)), eyes * 1.8);
-    } else if (kind < 3.5) { // Ducks bob through the scene in loose flocks.
-      q = mod(p + 0.5, 0.7) - 0.35;
-      float body = filledCircle(q, vec2(-0.015, -0.05), 0.13);
-      float head = filledCircle(q, vec2(0.095, 0.065 + 0.025 * sin(uTime * 1.5 + q.x * 12.0)), 0.075);
-      float bill = (1.0 - smoothstep(0.016, 0.04, abs(q.y - 0.055))) * step(0.16, q.x) * (1.0 - smoothstep(0.16, 0.25, q.x));
-      motif = max(max(body, head), bill);
-    } else if (kind < 4.5) { // Pizza planets, orbiting slices, and bubbling toppings.
-      q = p;
-      float radius = length(q);
-      float planet = 1.0 - smoothstep(0.01, 0.035, abs(radius - 0.28));
-      float a = atan(q.y, q.x) + uTime * 0.16;
-      float slice = (1.0 - smoothstep(0.42, 0.5, abs(a))) * (1.0 - smoothstep(0.18, 0.21, radius)) * smoothstep(0.035, 0.07, radius);
-      float orbit = 1.0 - smoothstep(0.01, 0.026, abs(q.y - 0.1 * sin(q.x * 3.0 + uTime)));
-      motif = max(max(planet * 0.65, slice * 0.9), orbit * 0.35);
-    } else {
-      float memeMode = 1.0 + mod(floor(t * 0.25), 9.0);
-      motif = eventShape(p * 2.0, memeMode) * 0.52;
-    }
-    col = mix(cam, uFog * 0.35 + uPrimary * 0.18, 0.16);
-    col += uPrimary * motif * 0.85;
-    col += uSecondary * smoothstep(0.7, 0.1, length(p)) * 0.08;
-  } else {
+  } else if (idx < 11.5) {
     // 11. Return to Reality
     float fade = 0.15 * (1.0 - smoothstep(0.0, 1.0, uEnergy));
     col = mix(cam, mix(cam, uFog * 0.4, fade), 0.15);
     col += uAccent * 0.03 * fbm(uv * 2.0);
+  } else {
+    // 12. Anime World: camera cel shading is the feature; this tint is deliberately quiet.
+    float halo = exp(-length(p) * 2.4) * (0.08 + uBass * 0.04);
+    col = mix(cam, uPrimary * 0.28 + cam * 0.72, 0.16);
+    col += uAccent * halo;
   }
 
   return col;
@@ -441,7 +325,7 @@ void main() {
   cam.b = sampleVideo(uv - chroma).b;
 
   // Anime world: restrained cel shading and ink contours keep the live camera readable.
-  if (uWorldIndex > 17.5 && uWorldIndex < 18.5) {
+  if (uWorldIndex > 11.5 && uWorldIndex < 12.5) {
     vec2 texel = 1.5 / uResolution;
     vec3 right = sampleVideo(uv + vec2(texel.x, 0.0));
     vec3 up = sampleVideo(uv + vec2(0.0, texel.y));
@@ -460,8 +344,9 @@ void main() {
   }
 
   vec3 world = worldOverlay(vUv, cam, uWorldIndex);
-  float camMix = clamp(uCameraMix, 0.72, 1.0);
-  vec3 color = mix(world, cam, 0.68 + camMix * 0.32);
+  float camMix = clamp(uCameraMix, 0.56, 1.0);
+  float cameraWeight = clamp(0.52 + camMix * 0.24, 0.62, 0.78);
+  vec3 color = mix(world, cam, cameraWeight);
 
   if (uColorMelt > 0.01) {
     color = hueRotate(color, uColorMelt * 0.25 + uHueShift + uMid * 0.08);
@@ -490,45 +375,32 @@ void main() {
     color.gb *= 1.0 - uVhs * 0.08;
   }
 
-  // Light touch camera transformations keep facial features and clothing readable.
+  // Camera looks are designed as image treatments, not decorative overlays.
   float sourceLuma = dot(cam, vec3(0.299, 0.587, 0.114));
   float edgeX = abs(sourceLuma - dot(sampleVideo(uv + vec2(0.003, 0.0)), vec3(0.299, 0.587, 0.114)));
   float edgeY = abs(sourceLuma - dot(sampleVideo(uv + vec2(0.0, 0.003)), vec3(0.299, 0.587, 0.114)));
-  float bodyEdge = clamp((edgeX + edgeY) * 7.0, 0.0, 1.0);
+  float edge = clamp((edgeX + edgeY) * 7.0, 0.0, 1.0);
   if (uTransform > 0.5 && uTransform < 1.5) {
-    float stars = pow(hash(floor(uv * uResolution * 0.12 + uTime * 0.1)), 28.0);
-    color = mix(color, hueRotate(color, 0.12), 0.28) + uAccent * stars * 0.45;
-  } else if (uTransform < 2.5 && uTransform > 1.5) {
-    float scan = 0.92 + 0.08 * sin(uv.y * uResolution.y * 0.32);
-    color = mix(color, vec3(color.g * 0.55, color.g, color.g * 1.25), 0.22) * scan;
-    color += uSecondary * bodyEdge * 0.18;
-  } else if (uTransform < 3.5 && uTransform > 2.5) {
-    vec3 facets = floor(color * 7.0 + noise(uv * 180.0) * 0.35) / 7.0;
-    color = mix(color, facets, 0.22) + uAccent * bodyEdge * 0.12;
-  } else if (uTransform < 4.5 && uTransform > 3.5) {
-    float metal = 0.5 + 0.5 * sin(sourceLuma * 9.0 + bodyEdge * 3.0 + uTime * 0.35);
-    color = mix(color, vec3(metal) * uAccent + color * 0.55, 0.18);
-  } else if (uTransform < 5.5 && uTransform > 4.5) {
-    color += uAccent * bodyEdge * (0.22 + uBass * 0.12);
-  } else if (uTransform < 6.5 && uTransform > 5.5) {
-    float smoke = fbm(uv * 5.0 + vec2(uTime * 0.025, -uTime * 0.04));
-    color = mix(color, color * (0.72 + smoke * 0.45) + uSecondary * smoke * 0.08, 0.2);
-  } else if (uTransform > 6.5) {
-    color += uPrimary * bodyEdge * 0.34;
-    color = mix(color, hueRotate(color, 0.52), 0.12);
-  }
-
-  // Sparse world events: a single oversized, themed shader asset with a soft glow.
-  if (uEventType > 0.5 && uEventIntensity > 0.001) {
-    float asset = eventShape(vUv - 0.5, uEventType);
-    float halo = exp(-abs(length(vUv - 0.5) - 0.38) * 22.0) * uEventIntensity;
-    vec3 eventTint = uAccent;
-    if (uEventType < 1.5 || (uEventType > 3.5 && uEventType < 4.5) || uEventType > 8.5) eventTint = vec3(1.0, 0.74, 0.16);
-    else if (uEventType < 2.5 || (uEventType > 4.5 && uEventType < 6.5)) eventTint = vec3(0.28, 0.95, 1.0);
-    else if (uEventType < 3.5) eventTint = vec3(1.0, 0.22, 0.82);
-    else if (uEventType > 6.5 && uEventType < 8.5) eventTint = vec3(1.0, 0.18, 0.38);
-    color = mix(color, color * 0.75 + eventTint * 0.25, asset * uEventIntensity * 0.3);
-    color += eventTint * (asset * 0.62 + halo * 0.08) * uEventIntensity;
+    float bands = floor(sourceLuma * 5.0 + 0.5) / 5.0;
+    color *= bands / max(sourceLuma, 0.08);
+    color *= 1.0 - smoothstep(0.08, 0.24, edge) * 0.72;
+  } else if (uTransform > 1.5 && uTransform < 2.5) {
+    float graphite = 1.0 - smoothstep(0.035, 0.18, edge);
+    float paperShade = 0.78 + sourceLuma * 0.2;
+    color = vec3(0.88, 0.84, 0.75) * paperShade * graphite;
+  } else if (uTransform > 2.5 && uTransform < 3.5) {
+    float shape = smoothstep(0.22, 0.55, sourceLuma);
+    color = mix(uFog * 0.45, uPrimary * 0.78, shape);
+    color += uAccent * (1.0 - smoothstep(0.02, 0.16, edge)) * 0.08;
+  } else if (uTransform > 3.5 && uTransform < 4.5) {
+    float bands = floor(sourceLuma * 4.0 + 0.5) / 4.0;
+    vec3 pigment = mix(uSecondary, uPrimary, smoothstep(0.12, 0.82, bands));
+    pigment = mix(pigment, uAccent, smoothstep(0.72, 0.98, bands) * 0.55);
+    color = mix(color * 0.72, pigment, 0.42);
+  } else if (uTransform > 4.5 && uTransform < 5.5) {
+    float scan = 0.96 + 0.04 * sin(uv.y * uResolution.y * 0.35);
+    vec3 hologram = mix(vec3(0.015, 0.08, 0.12), vec3(0.08, 0.78, 0.82), sourceLuma);
+    color = mix(hologram, uAccent, smoothstep(0.08, 0.22, edge) * 0.72) * scan;
   }
 
   // Soft, contrast-preserving glow and bloom
